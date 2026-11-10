@@ -13,7 +13,7 @@ MODEL_URLS = {
     "full": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task",
     "heavy": "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task",
 }
-CACHE_DIR = Path.home() / ".cache" / "boulderai"
+CACHE_DIR = Path.home() / ".cache" / "betaspotter"
 
 
 def model_path(variant: str = "full") -> Path:

@@ -2,12 +2,12 @@ import numpy as np
 import pytest
 
 import synth
-from boulderai.analysis import geometry as G
-from boulderai.fixes.beta import suggest_beta
-from boulderai.fixes.corrections import build_problem, suggest_fix
-from boulderai.pose import landmarks as L
-from boulderai.rules import bent_arms, body_tension, footwork, pull_direction
-from boulderai.rules.pull_direction import pull_angle
+from betaspotter.analysis import geometry as G
+from betaspotter.fixes.beta import suggest_beta
+from betaspotter.fixes.corrections import build_problem, suggest_fix
+from betaspotter.pose import landmarks as L
+from betaspotter.rules import bent_arms, body_tension, footwork, pull_direction
+from betaspotter.rules.pull_direction import pull_angle
 
 
 def check_body_kept(climb, finding, fix, tol=0.02):

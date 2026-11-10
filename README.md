@@ -1,4 +1,4 @@
-# BoulderAI
+# BetaSpotter
 
 Takes a video of a bouldering attempt and writes a folder of annotated screenshots,
 one per technique error, each with a suggested fix drawn on the same frame.
@@ -20,6 +20,16 @@ data and runs on a laptop CPU.
 
 ## Install
 
+You need Python 3.10 or newer and git.
+
+```bash
+git clone https://github.com/yzyun/BoulderAI.git
+```
+
+```bash
+cd BoulderAI
+```
+
 ```bash
 python -m venv .venv
 ```
@@ -28,23 +38,46 @@ python -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 ```
 
-Python 3.10+. The pose model (about 9 MB) is downloaded to `~/.cache/boulderai` on
-first run. On a minimal Linux install MediaPipe also needs the system package `libegl1`.
+On Windows the last command is `.venv\Scripts\pip install -e ".[dev]"`, and the
+program is then at `.venv\Scripts\betaspotter`. On macOS and Linux either call
+`.venv/bin/betaspotter` or run `source .venv/bin/activate` first so that plain
+`betaspotter` works, as in the examples below.
 
-## Use
+The pose model (about 9 MB) is downloaded to `~/.cache/betaspotter` the first time
+you run it, so that run needs an internet connection. On a minimal Linux install
+MediaPipe also needs the system package `libegl1`.
 
-Film from behind the climber with the phone held still (propped on the floor or a
-tripod), whole body in frame, one person on the wall.
+## Quick start
 
-```bash
-boulderai analyse climb.mp4 --hold-colour yellow
-```
+1. Film the climb from behind with the phone held still (propped on the floor or on
+   a tripod), the whole body in frame, and only one person on the wall.
+2. Run it, giving the colour of the holds on that problem:
+
+   ```bash
+   betaspotter analyse climb.mp4 --hold-colour yellow
+   ```
+
+3. Open the new folder under `out/` and go through the screenshots in order.
+
+A 30-second clip takes roughly a minute on a laptop.
+
+## Options
 
 Hold colours: red, orange, yellow, green, blue, purple, pink, black, white. For
 anything else pass an OpenCV HSV range with `--hsv h_lo,s_lo,v_lo,h_hi,s_hi,v_hi`.
 
-Other options: `--out DIR`, `--layout overlay` (fix drawn over you in one panel),
-`--stride 2` (every 2nd frame, faster), `--model lite|full|heavy`, `--config my.yaml`.
+| Option | What it does |
+| --- | --- |
+| `--hold-colour yellow` | Colour of the problem's holds |
+| `--hsv 20,90,100,34,255,255` | Custom colour range instead of a named colour |
+| `--out results` | Where to create the results folder (default `out`) |
+| `--layout overlay` | Draw the fix over you in one panel instead of side by side |
+| `--stride 2` | Analyse every 2nd frame: faster on long clips |
+| `--model lite` | Pose model: `lite` (fastest), `full` (default) or `heavy` (most accurate) |
+| `--holds holds.yaml` | Use a corrected hold list (see below) |
+| `--config my.yaml` | Override rule thresholds (see Tuning) |
+
+`betaspotter analyse --help` lists them all.
 
 ### Output
 
@@ -74,7 +107,7 @@ long upright ones sideways towards the route, round ones down (low confidence). 
 camera cannot see which side of a hold is positive, so check the guess:
 
 ```bash
-boulderai holds climb.mp4 --hold-colour yellow --out holds.yaml
+betaspotter holds climb.mp4 --hold-colour yellow --out holds.yaml
 ```
 
 This writes `holds.yaml` and a numbered picture `holds.png`. Edit
@@ -82,12 +115,12 @@ This writes `holds.yaml` and a numbered picture `holds.png`. Edit
 `confident: true`, then:
 
 ```bash
-boulderai analyse climb.mp4 --holds holds.yaml
+betaspotter analyse climb.mp4 --holds holds.yaml
 ```
 
 ### Tuning
 
-All thresholds live in `boulderai/rules/config.yaml`. Copy it, change what you need
+All thresholds live in `betaspotter/rules/config.yaml`. Copy it, change what you need
 and pass it with `--config`; only the keys you include are overridden.
 
 ## Limitations
@@ -114,7 +147,7 @@ The tests use synthetic climbers and walls (`tests/synth.py`), so no footage is 
 ## Layout
 
 ```
-boulderai/
+betaspotter/
   cli.py, pipeline.py      commands and the end-to-end flow
   pose/                    MediaPipe wrapper, smoothing
   holds/                   colour segmentation, pull-direction guess, holds.yaml

@@ -1,8 +1,8 @@
 import numpy as np
 
 import synth
-from boulderai.holds.orientation import estimate_orientations, load_holds, save_holds
-from boulderai.holds.segment import HSV_PRESETS, build_background, segment_holds
+from betaspotter.holds.orientation import estimate_orientations, load_holds, save_holds
+from betaspotter.holds.segment import HSV_PRESETS, build_background, segment_holds
 
 
 def wall_holds():

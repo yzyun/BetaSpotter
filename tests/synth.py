@@ -4,9 +4,9 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from boulderai.config import load_config
-from boulderai.analysis.climb import Climb
-from boulderai.types import Hold
+from betaspotter.config import load_config
+from betaspotter.analysis.climb import Climb
+from betaspotter.types import Hold
 
 TORSO, SHOULDER_W, HIP_W = 100.0, 70.0, 45.0
 UPPER_ARM, FOREARM, THIGH, SHANK = 55.0, 50.0, 80.0, 75.0
@@ -60,7 +60,7 @@ def make_hold(hold_id, centre, rx=22, ry=22, direction=(0, 1), confidence=0.3):
 
 def hold_under(kp, limb):
     """Where to put a hold so that limb (0..3) of this pose is on it."""
-    from boulderai.analysis.geometry import limb_points
+    from betaspotter.analysis.geometry import limb_points
     return limb_points(kp)[limb]
 
 

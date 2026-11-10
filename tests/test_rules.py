@@ -1,8 +1,8 @@
 import numpy as np
 
 import synth
-from boulderai.rules import bent_arms, body_tension, footwork, pull_direction, run_rules
-from boulderai.types import NO_CONTACT
+from betaspotter.rules import bent_arms, body_tension, footwork, pull_direction, run_rules
+from betaspotter.types import NO_CONTACT
 
 
 def rules_hit(climb):

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from boulderai.analysis import geometry as G
+from betaspotter.analysis import geometry as G
 from synth import good_pose, bent_pose
 
 

@@ -5,13 +5,13 @@ import numpy as np
 import pytest
 
 import synth
-from boulderai.fixes.beta import suggest_beta
-from boulderai.fixes.corrections import suggest_fix
-from boulderai.pipeline import analyse
-from boulderai.report import frame_picker
-from boulderai.report.annotate import render_finding
-from boulderai.report.writer import filename
-from boulderai.rules import run_rules
+from betaspotter.fixes.beta import suggest_beta
+from betaspotter.fixes.corrections import suggest_fix
+from betaspotter.pipeline import analyse
+from betaspotter.report import frame_picker
+from betaspotter.report.annotate import render_finding
+from betaspotter.report.writer import filename
+from betaspotter.rules import run_rules
 
 SCENARIOS = {
     "bent-arms": synth.scenario_bent_arms,
