@@ -1,0 +1,57 @@
+# Default thresholds. Copy this file, edit, and pass it with --config.
+# Distances and speeds are in "torso lengths" (shoulder line to hip line), so
+# they do not depend on video resolution or how far away the camera is.
+
+pose:
+  min_visibility: 0.3        # frames below this mean joint visibility are ignored
+  max_gap_s: 0.3             # tracking gaps up to this long are interpolated
+  one_euro_min_cutoff: 1.7
+  one_euro_beta: 0.01
+
+contacts:
+  still_speed: 0.5           # a limb slower than this (torso/s) counts as placed
+  min_still_s: 0.15
+  hold_tolerance: 0.3        # max distance from hand/toe to a hold outline
+
+phases:
+  static_speed: 0.5
+  min_static_s: 0.3
+  ignore_ground: true        # skip frames where the climber is standing on the floor
+  ground_margin: 0.25
+
+bent_arms:
+  max_elbow_deg: 150         # flag a hanging arm bent more than this
+  moderate_deg: 120
+  severe_deg: 90
+  min_duration_s: 0.5
+  lockoff_lookahead_s: 0.5   # bent arm just before the other hand reaches is fine
+
+body_tension:
+  torso_ratio: 0.78          # apparent torso length vs. normal -> hips off the wall
+  min_duration_s: 0.5
+  cut_min_s: 0.3             # both feet off for at least this long
+  cut_lookback_s: 1.0
+  drop_lookahead_s: 1.5      # feet cutting right before dropping off is ignored
+  swing_speed: 1.2           # hip speed while all four limbs are placed
+  swing_min_s: 0.15
+
+pull_direction:
+  max_angle_deg: 45          # forearm vs. the hold's usable direction
+  low_confidence_angle_deg: 70   # used when the hold direction is only a guess
+  min_duration_s: 0.5
+
+footwork:
+  com_margin: 0.15           # how far the centre of mass may sit outside the contacts
+  min_duration_s: 0.5
+  readjust_radius: 0.2
+  readjust_gap_s: 1.0
+  readjust_count: 2          # re-placements of the same foot before flagging
+
+fixes:
+  target_elbow_deg: 165
+  beta_margin: 0.1           # how much better alternative beta must score than the fix
+  max_candidates: 6
+
+report:
+  merge_gap_s: 1.0
+  max_findings: 30
