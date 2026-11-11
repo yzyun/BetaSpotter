@@ -23,11 +23,11 @@ data and runs on a laptop CPU.
 You need Python 3.10 or newer and git.
 
 ```bash
-git clone https://github.com/yzyun/BoulderAI.git
+git clone https://github.com/yzyun/BetaSpotter.git
 ```
 
 ```bash
-cd BoulderAI
+cd BetaSpotter
 ```
 
 ```bash
