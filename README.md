@@ -118,6 +118,48 @@ This writes `holds.yaml` and a numbered picture `holds.png`. Edit
 betaspotter analyse climb.mp4 --holds holds.yaml
 ```
 
+## Side view
+
+A camera behind you cannot see how far your body is from the wall, which is most of
+what goes wrong on overhangs. Film the same kind of clip from the side instead (phone
+still, level with the wall's edge so you look straight along the wall surface, whole
+body in frame) and run:
+
+```bash
+betaspotter side climb_side.mp4
+```
+
+| Error | How it is measured |
+| --- | --- |
+| Hips far from the wall | Hips further out from the wall surface than the wall's angle allows, while resting |
+| Bent arms | Same check as above; the elbow angle is clearest from the side |
+| Passive shoulders | Straight-armed hang with the ear-to-shoulder gap under 70% of your usual (overhangs only) |
+| Feet cut loose | Both feet off while hanging on the hands |
+| Square hips on the reach | A hand lands with the hips square to the wall and far out from it (overhangs only) |
+| Swinging out after the move | Hips travel out from the wall and back after a hand lands |
+
+The wall is drawn on every screenshot as a dashed line. Its position and angle are
+fitted through the places your hands and feet stopped, so no hold colour is needed.
+If the line looks wrong, or the clip shows too little of the wall, give the angle in
+degrees past vertical (30 = a 30 degree overhang, 0 = vertical, -10 = a slab):
+
+```bash
+betaspotter side climb_side.mp4 --wall-angle 30
+```
+
+The limits follow the angle. Hips may sit 0.7 torso lengths out on a vertical wall
+and 0.01 more per degree of overhang (1.0 at 30 degrees); on a slab the hips check is
+off, because hips away from the wall is correct there. `--out`, `--config`,
+`--layout`, `--stride` and `--model` work as for `analyse`, and the thresholds are
+under `side:` in the config file.
+
+Side-view limits: the wall is treated as one flat plane, so a clip that crosses a
+change of angle needs cutting into two. Left and right overlap from the side, so
+findings do not name a side. Hip rotation is judged from how wide the hips look,
+which is a rough measure. Passive shoulders gets no fix figure. Like the rest of the
+thresholds, the side-view ones are untuned starting values, tested only on synthetic
+climbers.
+
 ### Tuning
 
 All thresholds live in `betaspotter/rules/config.yaml`. Copy it, change what you need
@@ -142,7 +184,7 @@ and pass it with `--config`; only the keys you include are overridden.
 .venv/bin/python -m pytest
 ```
 
-The tests use synthetic climbers and walls (`tests/synth.py`), so no footage is needed.
+The tests use synthetic climbers and walls (`tests/synth.py`, `tests/synth_side.py`), so no footage is needed.
 
 ## Layout
 
@@ -151,8 +193,8 @@ betaspotter/
   cli.py, pipeline.py      commands and the end-to-end flow
   pose/                    MediaPipe wrapper, smoothing
   holds/                   colour segmentation, pull-direction guess, holds.yaml
-  analysis/                geometry, limb-hold contacts, static/move phases
-  rules/                   one module per error, thresholds in config.yaml
+  analysis/                geometry, limb-hold contacts, static/move phases, wall line (side view)
+  rules/                   one module per error (side.py for the side view), thresholds in config.yaml
   fixes/                   pose solver, per-rule corrections, alternative beta
   report/                  frame selection, drawing, output folder
 ```

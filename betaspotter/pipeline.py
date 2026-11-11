@@ -9,6 +9,7 @@ import numpy as np
 
 from .analysis.climb import Climb
 from .analysis.geometry import runs
+from .analysis.wall import WallError, estimate_wall
 from .config import load_config
 from .fixes.beta import suggest_beta
 from .fixes.corrections import suggest_fix
@@ -19,6 +20,7 @@ from .pose.smoothing import smooth_track
 from .report import frame_picker
 from .report.writer import make_out_dir, write_clean, write_report
 from .rules import run_rules
+from .rules.side import run_side_rules
 
 BG_MAX_DIM = 960
 BG_MAX_SAMPLES = 40
@@ -102,22 +104,7 @@ def analyse(video, hold_colour: str = "yellow", out="out", config=None, holds_fi
             model: str = "full", estimator=None, log: Callable = print) -> Path:
     """Analyse a climbing video and write a folder of annotated screenshots. Returns the folder."""
     cfg = load_config(config)
-    own_estimator = estimator is None
-    if own_estimator:
-        from .pose.estimator import PoseEstimator
-        log("Loading pose model...")
-        estimator = PoseEstimator(model)
-    try:
-        log("Tracking the climber...")
-        track = track_video(video, estimator, stride, log)
-    finally:
-        if own_estimator:
-            estimator.close()
-
-    kp, valid = smooth_track(track["kp"], track["vis"], track["fps"], cfg)
-    if valid.sum() < max(5, int(track["fps"])):
-        raise AnalysisError("Could not find a climber in this video. Check that one person is "
-                            "clearly visible, filmed from behind with a steady camera.")
+    track, kp, valid = _tracked(video, cfg, stride, model, estimator, log, "from behind")
 
     if holds_file:
         holds, hold_colour = load_holds(holds_file)
@@ -140,6 +127,31 @@ def analyse(video, hold_colour: str = "yellow", out="out", config=None, holds_fi
         beta = suggest_beta(climb, f, fix)
         items.append((f, fix, beta))
 
+    return _write(video, out, track, climb, items, hold_bgr, layout, log)
+
+
+def _tracked(video, cfg, stride, model, estimator, log, view: str):
+    """Pose-track the video and clean the track up. Returns (track, keypoints, valid)."""
+    own_estimator = estimator is None
+    if own_estimator:
+        from .pose.estimator import PoseEstimator
+        log("Loading pose model...")
+        estimator = PoseEstimator(model)
+    try:
+        log("Tracking the climber...")
+        track = track_video(video, estimator, stride, log)
+    finally:
+        if own_estimator:
+            estimator.close()
+    kp, valid = smooth_track(track["kp"], track["vis"], track["fps"], cfg)
+    if valid.sum() < max(5, int(track["fps"])):
+        raise AnalysisError("Could not find a climber in this video. Check that one person is "
+                            f"clearly visible, filmed {view} with a steady camera.")
+    return track, kp, valid
+
+
+def _write(video, out, track, climb, items, hold_bgr, layout, log) -> Path:
+    findings = [item[0] for item in items]
     out_dir = make_out_dir(out, video)
     if items:
         wanted = sorted({int(track["file_idx"][f.frame]) for f in findings})
@@ -152,3 +164,30 @@ def analyse(video, hold_colour: str = "yellow", out="out", config=None, holds_fi
         write_clean(out_dir, climb, grab_frames(video, [idx])[idx], i, hold_bgr)
     log(f"Wrote {max(1, len(items))} screenshot(s) to {out_dir}")
     return out_dir
+
+
+def analyse_side(video, out="out", config=None, wall_angle: float | None = None,
+                 layout: str = "panels", stride: int = 1, model: str = "full",
+                 estimator=None, log: Callable = print) -> Path:
+    """Analyse a climb filmed from the side: body position relative to the wall.
+
+    wall_angle: degrees past vertical (positive = overhang) to use instead of the
+    angle fitted through the hand and foot placements.
+    """
+    cfg = load_config(config)
+    track, kp, valid = _tracked(video, cfg, stride, model, estimator, log, "from the side")
+    climb = Climb.build(track["t"], kp, valid, [], cfg, fps=track["fps"])
+    try:
+        climb.wall = wall = estimate_wall(climb, wall_angle)
+    except WallError as err:
+        raise AnalysisError(str(err)) from err
+    how = "as given" if wall.source == "given" else f"estimated from {wall.n_points} hand and foot placements"
+    log(f"Wall: {wall.describe()} ({how})")
+    if wall.rms > cfg["side"]["wall_max_rms"]:
+        log("  warning: the placements do not line up well, so the wall line is uncertain. "
+            "Check it in the screenshots and pass --wall-angle if it is off.")
+
+    findings = frame_picker.select(run_side_rules(climb), cfg)
+    log(f"Flagged {len(findings)} technique errors")
+    items = [(f, suggest_fix(climb, f), None) for f in findings]
+    return _write(video, out, track, climb, items, (0, 230, 255), layout, log)

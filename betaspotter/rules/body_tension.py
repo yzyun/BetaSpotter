@@ -43,7 +43,8 @@ def check_hips(climb) -> list[Finding]:
     return findings
 
 
-def check_cut(climb) -> list[Finding]:
+def check_cut(climb, need_hold: bool = True) -> list[Finding]:
+    """need_hold=False also counts feet that were placed on no detected hold (side view)."""
     cfg = climb.cfg["body_tension"]
     placed = in_contact(climb)
     hands_on = placed[:, 0] | placed[:, 1]
@@ -55,7 +56,8 @@ def check_cut(climb) -> list[Finding]:
     findings = []
     for s, e in G.runs(mask, climb.frames(cfg["cut_min_s"])):
         before = climb.contacts[max(0, s - look_back):s, 2:]
-        if not (before >= 0).any():  # feet were not on holds just before
+        was_on = (before >= 0) if need_hold else (before != NO_CONTACT)
+        if not was_on.any():  # feet were not on holds just before
             continue
         after = hands_on[e:min(T, e + look_ahead)]
         if e + look_ahead >= T or (len(after) and not after.any()):

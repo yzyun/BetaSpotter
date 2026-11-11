@@ -35,6 +35,29 @@ def analyse(
 
 
 @app.command()
+def side(
+    video: Path = typer.Argument(..., exists=True, dir_okay=False, help="Video of the climb, filmed from the side."),
+    wall_angle: Optional[float] = typer.Option(None, "--wall-angle", help="Wall steepness in degrees past vertical (30 = 30 degree overhang, -10 = slab). Default: worked out from the video."),
+    out: Path = typer.Option(Path("out"), help="Folder to create the results folder in."),
+    config: Optional[Path] = typer.Option(None, exists=True, help="YAML file overriding rule thresholds."),
+    layout: str = typer.Option("panels", help="'panels' (side by side) or 'overlay' (fix drawn over you)."),
+    stride: int = typer.Option(1, min=1, help="Analyse every Nth frame (faster on long clips)."),
+    model: str = typer.Option("full", help="Pose model: lite, full or heavy."),
+):
+    """Analyse body position from a side-on video: hips, arms, feet and swing relative to the wall."""
+    from .io.video import VideoError
+    from .pipeline import AnalysisError, analyse_side
+
+    if layout not in ("panels", "overlay"):
+        raise typer.BadParameter("layout must be 'panels' or 'overlay'")
+    try:
+        analyse_side(video, out, config, wall_angle, layout, stride, model, log=typer.echo)
+    except (AnalysisError, VideoError, ValueError) as err:
+        typer.secho(f"Error: {err}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(1)
+
+
+@app.command()
 def holds(
     video: Path = typer.Argument(..., exists=True, dir_okay=False),
     hold_colour: str = typer.Option("yellow", "--hold-colour", "--hold-color"),

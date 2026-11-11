@@ -54,6 +54,21 @@ def draw_holds(img, holds, colour, thick: int, numbers: bool = False, fs: float 
             put_label(img, f"#{h.id}", h.centroid + np.array([8, -8]), fs)
 
 
+def draw_wall(img, wall, scale: float, fs: float) -> None:
+    """Side view: the wall surface as a dashed line, labelled with its angle."""
+    if wall is None:
+        return
+    h, w = img.shape[:2]
+    far = 2.0 * (h + w)
+    ok, a, b = cv2.clipLine((0, 0, w, h), _pt(wall.p0 - far * wall.up), _pt(wall.p0 + far * wall.up))
+    if not ok:
+        return
+    dashed_line(img, a, b, BLACK, _th(scale, 0.04, 3), 0.15 * scale)
+    dashed_line(img, a, b, WHITE, _th(scale, 0.02, 1), 0.15 * scale)
+    low = max(a, b, key=lambda p: p[1])  # label the bottom end: the zoom inset sits in a top corner
+    put_label(img, f"wall: {wall.describe()}", np.array(low, float) + np.array([8, -12 * fs]), fs * 0.8, BLACK, WHITE)
+
+
 def draw_skeleton(img, kp, colour, thick: int) -> None:
     for a, b in L.SKELETON:
         cv2.line(img, _pt(kp[a]), _pt(kp[b]), colour, thick, cv2.LINE_AA)
@@ -107,6 +122,8 @@ def _focus(climb, f: Finding) -> tuple[np.ndarray, float]:
         return centre, 0.5 * s + float(np.linalg.norm(ankles - centre, axis=1).max())
     if f.rule == "foot-readjust":
         return kp[L.LEG[f.evidence["side"]][3]], 0.45 * s
+    if f.rule == "passive-shoulders":
+        return G.shoulder_mid(kp), 0.55 * s
     return G.hip_mid(kp), 0.6 * s
 
 
@@ -200,7 +217,38 @@ def _mark_readjust(img, climb, f, fs):
     put_label(img, f"re-placed x{f.evidence['count']}", toe + np.array([0.3 * s, 0]), fs * 0.8, WHITE, RED)
 
 
+def _mark_wall_gap(img, climb, f, fs):
+    kp, s = climb.kp[f.frame], float(climb.scale[f.frame])
+    hip = G.hip_mid(kp)
+    cv2.line(img, _pt(climb.wall.foot(hip)), _pt(hip), RED, _th(s, 0.05, 3), cv2.LINE_AA)
+    cv2.circle(img, _pt(hip), _th(s, 0.08, 4), RED, -1, cv2.LINE_AA)
+    what = "square hips, " if f.rule == "square-reach" else "hips "
+    put_label(img, f"{what}{f.evidence['dist']:.2f} torso lengths out (aim under {f.evidence['limit']:.2f})",
+              hip + np.array([0.2 * s, 0.25 * s]), fs * 0.8, WHITE, RED)
+
+
+def _mark_swing_out(img, climb, f, fs):
+    i = f.frame
+    s = float(climb.scale[i])
+    hip = G.hip_mid(climb.kp[i])
+    _arrow(img, G.hip_mid(climb.kp[f.evidence["from_frame"]]), hip, RED, _th(s, 0.05, 2))
+    cv2.circle(img, _pt(hip), _th(s, 0.08, 4), RED, -1, cv2.LINE_AA)
+    put_label(img, f"swung {f.evidence['out']:.2f} torso lengths out",
+              hip + np.array([0.2 * s, 0.25 * s]), fs * 0.8, WHITE, RED)
+
+
+def _mark_shoulders(img, climb, f, fs):
+    kp, s = climb.kp[f.frame], float(climb.scale[f.frame])
+    sh = G.shoulder_mid(kp)
+    ears = 0.5 * (kp[L.L_EAR] + kp[L.R_EAR])
+    cv2.line(img, _pt(ears), _pt(sh), RED, _th(s, 0.07, 3), cv2.LINE_AA)
+    put_label(img, f"shoulders up by your ears ({f.evidence['ratio'] * 100:.0f}% of usual gap)",
+              sh + np.array([0.3 * s, 0.1 * s]), fs * 0.8, WHITE, RED)
+
+
 _MARKERS = {
+    "hips-far-from-wall": _mark_wall_gap, "square-reach": _mark_wall_gap,
+    "swing-out": _mark_swing_out, "passive-shoulders": _mark_shoulders,
     "bent-arms": _mark_bent_arms, "wrong-pull-direction": _mark_pull,
     "com-outside-support": _mark_com, "hips-off-wall": _mark_hips,
     "feet-cut": _mark_cut, "body-swing": _mark_swing, "foot-readjust": _mark_readjust,
@@ -235,6 +283,7 @@ def your_panel(frame, climb, f: Finding, hold_bgr) -> np.ndarray:
     kp, s = climb.kp[i], float(climb.scale[i])
     fs = max(0.45, img.shape[1] / 900)
     draw_holds(img, climb.holds, hold_bgr, _th(s, 0.02))
+    draw_wall(img, climb.wall, s, fs)
     draw_skeleton(img, kp, GREY, _th(s, 0.025))
     centre, radius = _focus(climb, f)
     cv2.circle(img, _pt(centre), int(radius), RED, _th(s, 0.03, 2), cv2.LINE_AA)
@@ -251,6 +300,7 @@ def suggestion_panel(frame, climb, f: Finding, sug: Suggestion, colour, hold_bgr
     kp0, s = climb.kp[i], float(climb.scale[i])
     fs = max(0.45, img.shape[1] / 900)
     draw_holds(img, climb.holds, hold_bgr, _th(s, 0.02))
+    draw_wall(img, climb.wall, s, fs)
     if sug.kind == "beta" and sug.hold_id is not None:
         hold = climb.hold(sug.hold_id)
         r = int(1.7 * np.sqrt(hold.area / np.pi)) + _th(s, 0.05)
@@ -267,7 +317,7 @@ def suggestion_panel(frame, climb, f: Finding, sug: Suggestion, colour, hold_bgr
         if np.linalg.norm(b - a) > 0.15 * s:
             _arrow(img, a, b, WHITE, _th(s, 0.03, 2))
             if name == "hips":
-                text = describe_change(kp0, sug.keypoints, s)
+                text = describe_change(kp0, sug.keypoints, s, climb.wall)
                 if text:
                     put_label(img, text, b + np.array([0.25 * s, 0.25 * s]), fs * 0.8, BLACK, colour)
     return img
@@ -369,6 +419,7 @@ def render_clean(frame, climb, i: int, hold_bgr=(0, 230, 255)) -> np.ndarray:
     img = frame.copy()
     s = float(climb.scale[i])
     draw_holds(img, climb.holds, hold_bgr, _th(s, 0.02))
+    draw_wall(img, climb.wall, s, max(0.45, img.shape[1] / 900))
     draw_skeleton(img, climb.kp[i], GREEN, _th(s, 0.03, 2))
     return compose([("YOUR CLIMB", (200, 200, 200), img)],
                    [("NO TECHNIQUE ERRORS FLAGGED", GREEN, 1.25),

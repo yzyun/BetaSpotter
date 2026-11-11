@@ -9,6 +9,7 @@ from ..types import LIMBS, NO_CONTACT, Finding, Suggestion
 from .optimizer import Objective, solve_pose
 
 SIDES = ("left", "right")
+SIDE_HIP_RULES = ("hips-far-from-wall", "square-reach", "swing-out")
 
 
 def contact_pins(climb, frame: int) -> dict:
@@ -40,6 +41,8 @@ def build_problem(climb, finding: Finding):
     bones = climb.bone_targets(frame)
     obj = Objective()
     rule = finding.rule
+    if climb.wall is not None:
+        obj.wall = (climb.wall.p0, climb.wall.n)
 
     if rule == "bent-arms":
         for side in finding.evidence["sides"]:
@@ -59,15 +62,27 @@ def build_problem(climb, finding: Finding):
         obj.com_x = com_range(climb, frame, pins)
     elif rule == "body-swing":
         obj.com_x = com_range(climb, frame, pins)
+    elif rule in SIDE_HIP_RULES and climb.wall is not None:
+        obj.hip_max = float(finding.evidence["target"]) * float(climb.scale[frame])
     else:
         return None
     return pins, bones, obj
 
 
-def describe_change(kp0: np.ndarray, kp1: np.ndarray, scale: float) -> str:
-    """Plain-words description of how the hips move between two poses."""
+def describe_change(kp0: np.ndarray, kp1: np.ndarray, scale: float, wall=None) -> str:
+    """Plain-words description of how the hips move between two poses.
+
+    Seen from the side (wall given), sideways in the picture means in or out from the wall.
+    """
     d = (G.hip_mid(kp1) - G.hip_mid(kp0)) / scale
     parts = []
+    if wall is not None:
+        out = float(d @ wall.n)
+        if abs(out) > 0.1:
+            parts.append("in towards the wall" if out < 0 else "out from the wall")
+        if abs(d[1]) > 0.1 and abs(out) <= 0.1:
+            parts.append("lower" if d[1] > 0 else "higher")
+        return "hips " + " and ".join(parts) if parts else ""
     if abs(d[1]) > 0.1:
         parts.append("lower" if d[1] > 0 else "higher")
     if abs(d[0]) > 0.1:
@@ -84,6 +99,9 @@ _FIX_TIPS = {
     "hips-off-wall": "Drive your hips in to the wall so your body is long and flat against it.",
     "feet-cut": "Keep both feet pressed on their holds with your weight between them.",
     "body-swing": "Settle your weight between your holds before moving: {move}.",
+    "hips-far-from-wall": "Bring your hips in on the same hands and feet: {move}.",
+    "square-reach": "Turn side-on and reach with your hips in: {move}.",
+    "swing-out": "Stay tight as the hand lands so your hips stay where they were: {move}.",
 }
 
 
@@ -95,7 +113,7 @@ def suggest_fix(climb, finding: Finding) -> Suggestion | None:
     kp0 = climb.kp[finding.frame]
     scale = float(climb.scale[finding.frame])
     kp1 = solve_pose(kp0, pins, bones, obj, scale)
-    move = describe_change(kp0, kp1, scale) or "small adjustment"
+    move = describe_change(kp0, kp1, scale, climb.wall) or "small adjustment"
     tip = _FIX_TIPS[finding.rule].format(move=move)
     return Suggestion(kind="fix", keypoints=kp1, tip=tip)
 

@@ -47,6 +47,25 @@ footwork:
   readjust_gap_s: 1.0
   readjust_count: 2          # re-placements of the same foot before flagging
 
+# Side-view analysis (`betaspotter side`). Distances are out from the wall surface.
+side:
+  wall_min_span: 1.0         # placements must cover this much wall to fit its angle
+  wall_max_rms: 0.3          # warn when placements scatter more than this about the line
+  overhang_min_deg: 10       # overhang-only checks switch on past this angle
+  slab_max_deg: -5           # on slabs steeper than this, hips away from the wall is correct
+  hip_dist_vertical: 0.7     # how far the hips may sit from a vertical wall
+  hip_dist_per_deg: 0.01     # extra allowed per degree of overhang
+  hip_dist_max: 1.2
+  hip_min_duration_s: 0.5
+  shoulder_ratio: 0.7        # ear-to-shoulder gap vs. usual -> hanging passively
+  shoulder_min_duration_s: 0.5
+  reach_window_s: 0.3        # judged this long after a hand lands
+  reach_hip_fraction: 0.8    # hips beyond this share of the limit count as far out on a reach
+  square_hip_width: 0.2      # apparent hip width under this = hips square to the wall
+  swing_out: 0.35            # hips travelling further out than this after a move
+  swing_window_s: 1.5
+  swing_settle_speed: 0.5
+
 fixes:
   target_elbow_deg: 165
   beta_margin: 0.1           # how much better alternative beta must score than the fix

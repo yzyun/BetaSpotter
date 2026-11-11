@@ -30,6 +30,7 @@ class Climb:
     on_wall: np.ndarray  # [T]
     com: np.ndarray  # [T, 2]
     bone_ratio: dict  # bone -> typical length / torso length
+    wall: object | None = None  # analysis.wall.Wall, set for side-view footage only
 
     @classmethod
     def build(cls, t, kp, valid, holds: list[Hold], cfg: dict, fps: float | None = None) -> "Climb":
